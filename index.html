@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deciq — AI Meeting Copilot</title>
+  <style>
+    :root {
+      --bg: #fbf8f1; --paper: #fffdf8; --ink: #24211d; --muted: #756f65;
+      --line: #e4d8c3; --orange: #ff8a3d; --orange-dark: #dd6822;
+      --blue: #8ca8df; --green: #7abf8f; --shadow: 0 24px 70px rgba(75,54,28,.12);
+      --radius: 28px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 15% 8%, rgba(255,138,61,.14), transparent 28%),
+                  radial-gradient(circle at 88% 10%, rgba(140,168,223,.16), transparent 30%),
+                  linear-gradient(180deg, #fffaf1 0%, var(--bg) 42%, #f7f0e4 100%);
+      color: var(--ink);
+    }
+    a { color: inherit; text-decoration: none; }
+    .container { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    nav {
+      position: sticky; top: 14px; z-index: 20; margin: 14px auto 0; width: min(1120px, calc(100% - 40px));
+      border: 1px solid rgba(228,216,195,.8); background: rgba(255,253,248,.78); backdrop-filter: blur(18px);
+      border-radius: 999px; padding: 10px 12px 10px 18px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 14px 38px rgba(93,70,39,.08);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; letter-spacing: -.04em; font-size: 22px; }
+    .logo { width: 30px; height: 30px; border-radius: 11px; background: linear-gradient(135deg, var(--orange), #ffd59a);
+      display: grid; place-items: center; color: #fff; font-weight: 900; box-shadow: 0 10px 28px rgba(255,138,61,.28); }
+    .navlinks { display: flex; gap: 28px; color: var(--muted); font-size: 14px; align-items: center; }
+    .nav-cta { background: var(--ink); color: white; border-radius: 999px; padding: 11px 18px; font-weight: 650; font-size: 14px; }
+    .hero { padding: 92px 0 54px; text-align: center; position: relative; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: rgba(255,253,248,.82);
+      color: #7a5634; border-radius: 999px; padding: 8px 14px; font-size: 14px; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(93,70,39,.06); }
+    .spark { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 0 5px rgba(255,138,61,.14); }
+    h1 { margin: 0 auto; max-width: 920px; font-size: clamp(48px, 7vw, 86px); line-height: .98; letter-spacing: -.07em; font-weight: 820; }
+    .hero-copy { max-width: 690px; margin: 28px auto 34px; color: var(--muted); font-size: 20px; line-height: 1.65; }
+    .actions { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 52px; }
+    .button { border-radius: 999px; padding: 15px 22px; font-weight: 750; display: inline-flex; align-items: center; gap: 8px; transition: transform .18s ease; }
+    .button:hover { transform: translateY(-2px); }
+    .primary { background: var(--orange); color: #fff; box-shadow: 0 18px 38px rgba(255,138,61,.26); }
+    .secondary { background: var(--paper); border: 1px solid var(--line); color: var(--ink); box-shadow: 0 14px 34px rgba(93,70,39,.06); }
+    .mockup-wrap { position: relative; margin: 0 auto; max-width: 1030px; }
+    .float-card { position: absolute; z-index: 5; background: var(--paper); border: 1px solid var(--line); border-radius: 22px; padding: 16px; box-shadow: var(--shadow); text-align: left; }
+    .float-left { left: -6px; top: 88px; width: 236px; } .float-right { right: -8px; bottom: 74px; width: 250px; }
+    .mini-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; font-weight: 650; }
+    .mini-title { font-size: 16px; line-height: 1.35; font-weight: 760; letter-spacing: -.02em; }
+    .mini-row { display: flex; align-items: center; gap: 9px; margin-top: 12px; color: var(--muted); font-size: 13px; }
+    .check { width: 20px; height: 20px; border-radius: 50%; background: #e7f6ed; color: #3f9462; display: grid; place-items: center; font-size: 12px; font-weight: 900; }
+    .mockup { border: 1px solid var(--line); background: rgba(255,253,248,.75); box-shadow: var(--shadow); border-radius: 34px; padding: 16px; text-align: left; }
+    .app { background: #fff; border: 1px solid #ece3d5; border-radius: 24px; overflow: hidden; }
+    .appbar { background: #fff8ec; border-bottom: 1px solid #ece3d5; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
+    .dots { display: flex; gap: 7px; } .dot { width: 10px; height: 10px; border-radius: 999px; background: #dfcdb2; }
+    .live { background: #fff; border: 1px solid #eadcc8; border-radius: 999px; padding: 7px 11px; color: #b45321; font-size: 12px; font-weight: 750; }
+    .appgrid { display: grid; grid-template-columns: 1.1fr .9fr; min-height: 430px; }
+    .transcript { padding: 26px; border-right: 1px solid #ece3d5; }
+    .side { background: #fffaf2; padding: 24px; }
+    .section-label { font-size: 13px; color: var(--muted); font-weight: 760; margin-bottom: 14px; text-transform: uppercase; letter-spacing: .06em; }
+    .line { display: grid; grid-template-columns: 76px 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid #f0e6d8; color: #61594f; font-size: 15px; line-height: 1.5; }
+    .speaker { color: var(--ink); font-weight: 750; }
+    .highlight { background: #fff1dc; border-radius: 12px; padding: 2px 6px; color: #9d4d13; font-weight: 650; }
+    .insight { background: #fff; border: 1px solid #eddfca; border-radius: 18px; padding: 16px; margin-bottom: 12px; box-shadow: 0 12px 28px rgba(93,70,39,.05); }
+    .insight h4 { margin: 0 0 8px; letter-spacing: -.02em; }
+    .insight p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+    .badge { display: inline-flex; font-size: 12px; font-weight: 760; background: #eef6ff; color: #4268a8; border-radius: 999px; padding: 6px 9px; margin-bottom: 10px; }
+    .features { padding: 88px 0 46px; }
+    .section-head { max-width: 720px; margin-bottom: 34px; }
+    .kicker { color: var(--orange-dark); font-weight: 800; margin-bottom: 12px; }
+    h2 { margin: 0; font-size: clamp(36px, 5vw, 62px); line-height: 1.02; letter-spacing: -.06em; }
+    .section-copy { color: var(--muted); font-size: 18px; line-height: 1.7; margin-top: 18px; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .card { background: rgba(255,253,248,.78); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; min-height: 260px; box-shadow: 0 16px 42px rgba(93,70,39,.06); }
+    .card-icon { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; font-weight: 900; margin-bottom: 24px; }
+    .i1 { background: #fff1dc; color: #c65d16; } .i2 { background: #edf6ff; color: #4b73b8; } .i3 { background: #edf8f0; color: #40865d; }
+    .card h3 { margin: 0 0 12px; font-size: 24px; letter-spacing: -.04em; }
+    .card p { margin: 0; color: var(--muted); line-height: 1.65; }
+    .workflow { padding: 54px 0 90px; }
+    .workflow-panel { background: var(--ink); color: #fff; border-radius: 38px; padding: 44px; display: grid; grid-template-columns: .9fr 1.1fr; gap: 34px; box-shadow: var(--shadow); }
+    .workflow-panel .kicker { color: #ffd49d; } .workflow-panel .section-copy { color: rgba(255,255,255,.68); }
+    .steps { display: grid; gap: 12px; }
+    .step { display: grid; grid-template-columns: 48px 1fr; gap: 16px; background: rgba(255,255,255,.075); border: 1px solid rgba(255,255,255,.11); border-radius: 22px; padding: 18px; }
+    .num { width: 40px; height: 40px; border-radius: 14px; background: rgba(255,138,61,.22); color: #ffd49d; display: grid; place-items: center; font-weight: 900; }
+    .step strong { display: block; margin-bottom: 5px; } .step span { color: rgba(255,255,255,.65); line-height: 1.55; font-size: 15px; }
+    .cta { text-align: center; padding: 18px 0 100px; }
+    .cta-box { background: rgba(255,253,248,.86); border: 1px solid var(--line); border-radius: 38px; padding: 58px 24px; box-shadow: var(--shadow); }
+    .cta h2 { max-width: 760px; margin: 0 auto; }
+    .cta p { max-width: 620px; margin: 20px auto 28px; color: var(--muted); line-height: 1.7; font-size: 18px; }
+    footer { padding: 28px 0 44px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); font-size: 14px; }
+    @media (max-width: 980px) {
+      .navlinks { display: none; } .appgrid { grid-template-columns: 1fr; } .transcript { border-right: 0; border-bottom: 1px solid #ece3d5; }
+      .cards { grid-template-columns: 1fr; } .workflow-panel { grid-template-columns: 1fr; padding: 30px; } .float-card { display: none; } .hero { padding-top: 68px; }
+    }
+    @media (max-width: 620px) {
+      .container, nav { width: min(100% - 24px, 1120px); } .hero-copy { font-size: 18px; }
+      .appbar { align-items: flex-start; gap: 12px; flex-direction: column; } .line { grid-template-columns: 1fr; gap: 4px; }
+      footer { flex-direction: column; gap: 10px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="brand" href="#"><span class="logo">D</span>Deciq</a>
+    <div class="navlinks">
+      <a href="#features">Features</a><a href="#workflow">Workflow</a><a href="#beta">Beta</a>
+      <a class="nav-cta" href="mailto:hello@deciq.net">Request access</a>
+    </div>
+  </nav>
+
+  <main class="hero container">
+    <div class="pill"><span class="spark"></span> AI Meeting Copilot for decision-driven teams</div>
+    <h1>Turn every meeting into a decision memory.</h1>
+    <p class="hero-copy">Deciq listens to meetings, captures decisions, extracts action items, and builds a searchable memory of why your team chose what it chose.</p>
+    <div class="actions">
+      <a href="mailto:hello@deciq.net" class="button primary">Join private beta</a>
+      <a href="#features" class="button secondary">Explore product</a>
+    </div>
+
+    <div class="mockup-wrap">
+      <div class="float-card float-left">
+        <div class="mini-label">Detected decision</div>
+        <div class="mini-title">Launch will move to Aug 15 due to auth reliability risk.</div>
+        <div class="mini-row"><span class="check">✓</span> Saved to decision memory</div>
+      </div>
+      <div class="float-card float-right">
+        <div class="mini-label">Ask Deciq</div>
+        <div class="mini-title">“Why did we delay launch?”</div>
+        <div class="mini-row"><span class="check">✓</span> Answered with meeting source</div>
+      </div>
+
+      <section class="mockup">
+        <div class="app">
+          <div class="appbar">
+            <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            <span class="live">Live meeting intelligence</span>
+          </div>
+          <div class="appgrid">
+            <div class="transcript">
+              <div class="section-label">Transcript</div>
+              <div class="line"><span class="speaker">Maya</span><span>We need to decide whether the launch date still makes sense.</span></div>
+              <div class="line"><span class="speaker">Alex</span><span>The authentication service is not stable enough. I recommend <span class="highlight">delaying two weeks</span>.</span></div>
+              <div class="line"><span class="speaker">Sam</span><span>Agreed. If we move to August 15, marketing can update customer messaging.</span></div>
+              <div class="line"><span class="speaker">Deciq</span><span><span class="highlight">Decision captured:</span> Launch date moved to August 15.</span></div>
+            </div>
+            <aside class="side">
+              <div class="section-label">Deciq output</div>
+              <div class="insight"><span class="badge">Decision</span><h4>Delay launch to August 15</h4><p>Reason: unresolved authentication reliability risk and incomplete customer testing.</p></div>
+              <div class="insight"><span class="badge">Action items</span><h4>3 follow-ups created</h4><p>Alex owns auth schema. Maya owns launch plan. Sam owns customer email draft.</p></div>
+              <div class="insight"><span class="badge">Memory</span><h4>Searchable source saved</h4><p>Future questions can cite this meeting and explain why the decision was made.</p></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <section class="features container" id="features">
+    <div class="section-head">
+      <div class="kicker">Beyond meeting notes</div>
+      <h2>A calm workspace for decisions, context, and follow-through.</h2>
+      <p class="section-copy">Deciq is designed for product, engineering, sales, and leadership teams that need more than summaries. It turns conversation into institutional knowledge.</p>
+    </div>
+    <div class="cards">
+      <article class="card"><div class="card-icon i1">01</div><h3>Decision capture</h3><p>Automatically identifies decisions, tradeoffs, risks, owners, deadlines, and open questions from every meeting.</p></article>
+      <article class="card"><div class="card-icon i2">02</div><h3>Meeting memory</h3><p>Ask why something was decided and Deciq answers with the original source, date, participants, and context.</p></article>
+      <article class="card"><div class="card-icon i3">03</div><h3>Action execution</h3><p>Send follow-ups to Slack, create Jira or Linear tasks, and turn meeting outcomes into real workflow progress.</p></article>
+    </div>
+  </section>
+
+  <section class="workflow container" id="workflow">
+    <div class="workflow-panel">
+      <div>
+        <div class="kicker">How it works</div>
+        <h2>From raw conversation to organizational memory.</h2>
+        <p class="section-copy">Start with uploads for the MVP. Add live meeting capture later. The product story grows naturally from copilot to decision intelligence.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><div><strong>Listen</strong><span>Import Zoom, Google Meet, Teams, audio files, or transcripts.</span></div></div>
+        <div class="step"><div class="num">2</div><div><strong>Understand</strong><span>Extract summaries, decisions, action items, risks, and unresolved questions.</span></div></div>
+        <div class="step"><div class="num">3</div><div><strong>Remember</strong><span>Build a searchable decision graph across meetings and documents.</span></div></div>
+        <div class="step"><div class="num">4</div><div><strong>Act</strong><span>Push tasks, updates, and follow-ups into the tools your team already uses.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta container" id="beta">
+    <div class="cta-box">
+      <h2>Make every decision easy to find, explain, and execute.</h2>
+      <p>Deciq is opening a private beta for teams that want their meetings to become a living source of truth.</p>
+      <a href="mailto:hello@deciq.net" class="button primary">Request early access</a>
+    </div>
+  </section>
+
+  <footer class="container">
+    <span>© 2026 Deciq</span>
+    <span>deciq.net · Decision Intelligence for modern teams</span>
+  </footer>
+</body>
+</html>
