@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Deciq — Decision memory for teams</title>
+<meta name="description" content="Deciq keeps the reasoning behind every decision your team makes — captured, sourced, and searchable for good." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,640&family=Inter:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#15171E;          /* canvas */
+    --ink-2:#1C1F28;         /* raised panel */
+    --ink-3:#232733;         /* hover / line on dark */
+    --paper:#F4F0E6;         /* bone "record" surface */
+    --paper-2:#FBF8F0;
+    --on-ink:#ECE7DA;        /* text on dark */
+    --muted:#9A968C;         /* muted on dark */
+    --muted-paper:#6F6A5E;   /* muted on paper */
+    --line:#2A2E3A;          /* hairline on dark */
+    --line-paper:#E3DDCC;    /* hairline on paper */
+    --amber:#E8B14C;         /* the single accent (highlighter) */
+    --amber-soft:rgba(232,177,76,.16);
+    --slate:#8497C9;         /* citation tint, used sparingly */
+    --slate-soft:rgba(132,151,201,.16);
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --sans:"Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --maxw:1160px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--ink); color:var(--on-ink);
+    font-family:var(--sans); font-size:17px; line-height:1.6;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  a{color:inherit; text-decoration:none;}
+  ::selection{background:var(--amber-soft); color:var(--on-ink);}
+  .wrap{width:min(var(--maxw), calc(100% - 48px)); margin:0 auto;}
+  .mono{font-family:var(--mono);}
+
+  /* kicker / eyebrow */
+  .kicker{
+    font-family:var(--mono); font-size:12px; font-weight:500; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--amber); display:inline-flex; align-items:center; gap:9px;
+  }
+  .kicker::before{content:""; width:14px; height:1px; background:var(--amber); display:inline-block;}
+
+  h1,h2,h3{font-family:var(--serif); font-weight:600; letter-spacing:-.02em; line-height:1.02; margin:0;}
+  h1{font-size:clamp(44px, 6.4vw, 82px); font-weight:500; letter-spacing:-.035em; line-height:.98;}
+  h2{font-size:clamp(32px, 4.4vw, 54px); letter-spacing:-.03em; line-height:1.04;}
+  p{margin:0;}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:sticky; top:0; z-index:50; transition:border-color .3s ease, background .3s ease, backdrop-filter .3s ease;
+    border-bottom:1px solid transparent;
+  }
+  nav.scrolled{background:rgba(21,23,30,.78); backdrop-filter:blur(16px) saturate(160%); border-bottom-color:var(--line);}
+  .nav-inner{display:flex; align-items:center; justify-content:space-between; padding:18px 0;}
+  .brand{display:flex; align-items:center; gap:11px; font-family:var(--serif); font-weight:600; font-size:21px; letter-spacing:-.02em;}
+  .mark{width:26px; height:26px; position:relative; flex:none;}
+  .mark svg{display:block;}
+  .navlinks{display:flex; gap:30px; align-items:center; font-size:14.5px; color:var(--muted);}
+  .navlinks a:not(.nav-cta){transition:color .2s ease;}
+  .navlinks a:not(.nav-cta):hover{color:var(--on-ink);}
+  .nav-cta{
+    color:var(--ink); background:var(--on-ink); padding:9px 16px; border-radius:8px; font-weight:600; font-size:14px;
+    display:inline-flex; align-items:center; gap:7px; transition:transform .18s ease, background .2s ease;
+  }
+  .nav-cta:hover{transform:translateY(-1px); background:#fff;}
+
+  /* ---------- HERO ---------- */
+  .hero{padding:78px 0 96px; position:relative;}
+  .hero-grid{display:grid; grid-template-columns:1.02fr 1.15fr; gap:64px; align-items:center; position:relative;}
+  .hero h1{margin:22px 0 0; max-width:14ch;}
+  .hero-sub{margin:26px 0 0; color:var(--muted); font-size:19px; line-height:1.62; max-width:40ch;}
+  .hero-sub b{color:var(--on-ink); font-weight:500;}
+
+  /* capture form */
+  .capture{display:flex; gap:8px; margin-top:34px; max-width:460px; flex-wrap:wrap;}
+  .capture input{
+    flex:1 1 200px; min-width:0; background:var(--ink-2); border:1px solid var(--line); color:var(--on-ink);
+    border-radius:10px; padding:14px 16px; font-family:var(--sans); font-size:15px; transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .capture input::placeholder{color:#6c6960;}
+  .capture input:focus{outline:none; border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-soft);}
+  .btn-primary{
+    background:var(--amber); color:#1b1505; border:1px solid var(--amber); border-radius:10px;
+    padding:14px 22px; font-family:var(--sans); font-weight:650; font-size:15px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px; transition:transform .18s ease, box-shadow .2s ease, filter .2s ease;
+    box-shadow:0 10px 30px rgba(232,177,76,.18);
+  }
+  .btn-primary:hover{transform:translateY(-2px); filter:brightness(1.05); box-shadow:0 16px 36px rgba(232,177,76,.26);}
+  .btn-secondary{
+    background:transparent; color:var(--on-ink); border:1px solid var(--line); border-radius:10px;
+    padding:13px 20px; font-family:var(--sans); font-weight:600; font-size:15px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px; transition:border-color .2s ease, transform .18s ease, color .2s ease;
+  }
+  .btn-secondary:hover{border-color:var(--muted); color:#fff; transform:translateY(-2px);}
+  .cta-row{display:flex; gap:12px; flex-wrap:wrap; align-items:center;}
+  .reassure{margin-top:14px; font-family:var(--mono); font-size:12px; letter-spacing:.02em; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .reassure .dot{width:3px; height:3px; border-radius:50%; background:var(--muted); display:inline-block;}
+  .capture.done input,.capture.done button{display:none;}
+  .capture-done{display:none; margin-top:34px; align-items:center; gap:11px; color:var(--on-ink); font-size:15px;
+    background:var(--ink-2); border:1px solid var(--line); border-radius:10px; padding:14px 16px; max-width:460px;}
+  .capture-done.show{display:flex;}
+  .capture-done .tick{width:22px;height:22px;border-radius:50%;background:var(--amber-soft);color:var(--amber);display:grid;place-items:center;flex:none;}
+
+  /* ===================== DECISION RECORD — the signature object ===================== */
+  /* One component, instantiated in: hero, search example, workflow, time-travel.        */
+  @keyframes drblink{50%{opacity:0;}}
+  /* the "ask + answer" surface (hero + search example) */
+  .dr-frame{position:relative; background:var(--paper); border:1px solid var(--line-paper); border-radius:18px; overflow:hidden;
+    box-shadow:0 50px 110px -22px rgba(0,0,0,.5), 0 8px 24px -14px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.05) inset;}
+  .dr-frame__search{display:flex; align-items:center; gap:11px; padding:15px 18px; background:#fff; border-bottom:1px solid var(--line-paper);
+    font-family:var(--sans); font-size:15.5px; font-weight:500; color:#2a261d;}
+  .dr-frame__search svg{flex:none; color:var(--muted-paper);}
+  .dr-frame__search .caret{display:inline-block; width:2px; height:18px; background:var(--amber); margin-left:1px; vertical-align:-3px; animation:drblink 1s step-end infinite;}
+  .dr-frame__body{padding:18px;}
+  .dr-frame--sm{border-radius:14px; box-shadow:0 18px 36px -20px rgba(0,0,0,.5);}
+  .dr-frame--sm .dr-frame__search{padding:12px 14px; font-size:13.5px;}
+  .dr-frame--sm .dr-frame__body{padding:13px;}
+
+  /* the Decision Record card */
+  .drcard{background:#fff; border:1px solid var(--line-paper); border-radius:14px; overflow:hidden; color:#2a261d; text-align:left;
+    box-shadow:0 22px 44px -20px rgba(120,90,30,.22);}
+  .drcard__head{display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--paper-2); border-bottom:1px solid var(--line-paper);}
+  .drcard__glyph{width:24px; height:24px; border-radius:8px; background:#fff; border:1px solid var(--line-paper); display:grid; place-items:center; flex:none;}
+  .drcard__kind{font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase; color:#9a6b16;}
+  .drcard__meta{margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; letter-spacing:.05em; color:var(--muted-paper);}
+  .drcard__live{width:6px; height:6px; border-radius:50%; background:var(--amber); display:inline-block;}
+  .drcard__body{padding:16px;}
+  .drcard__title{font-family:var(--serif); font-weight:600; font-size:19px; letter-spacing:-.015em; line-height:1.16; color:#2a261d; margin:0;}
+  .drcard__fields{margin-top:15px; display:grid; gap:11px;}
+  .drcard__row{display:flex; align-items:flex-start; gap:14px; font-size:13px; line-height:1.45;}
+  .drcard__k{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-paper); width:56px; flex:none; padding-top:2px;}
+  .drcard__v{color:#4a4538;}
+  .drcard__v b{color:#2a261d; font-weight:600;}
+  .drcard__owner{display:inline-flex; align-items:center; gap:7px;}
+  .drcard__ava{width:18px; height:18px; border-radius:50%; background:var(--amber-soft); color:#9a6b16; display:inline-grid; place-items:center; font-size:10px; font-weight:700; flex:none;}
+  .drcard__cite{display:inline-flex; align-items:center; gap:4px; font-family:var(--mono); font-size:10px; color:#5a6aa0; background:var(--slate-soft); border:1px solid rgba(132,151,201,.26); padding:2px 7px; border-radius:6px; white-space:nowrap; margin-left:6px; vertical-align:1px;}
+  .drcard__cite::before{content:"\21B3"; opacity:.7;}
+  .drcard__lineage{margin-top:14px; padding-top:13px; border-top:1px solid var(--line-paper);}
+  .drcard__lnk{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-paper); display:block; margin-bottom:10px;}
+  .drcard__track{display:flex; align-items:center;}
+  .drcard__node{font-family:var(--sans); font-size:11.5px; font-weight:500; color:#4a4538; background:var(--paper-2); border:1px solid var(--line-paper); border-radius:7px; padding:5px 10px; white-space:nowrap;}
+  .drcard__node.is-now{color:#5a3d08; background:var(--amber-soft); border-color:rgba(232,177,76,.42); font-weight:600;}
+  .drcard__edge{height:1.5px; background:var(--line-paper); flex:1 1 12px; max-width:26px; margin:0 3px;}
+  .drcard__foot{margin-top:13px; font-family:var(--mono); font-size:10px; letter-spacing:.03em; color:var(--muted-paper);}
+  /* size modifiers */
+  .drcard--lg .drcard__title{font-size:21px;}
+  .drcard--lg .drcard__body{padding:17px;}
+  .drcard--sm{box-shadow:0 12px 26px -16px rgba(120,90,30,.22);}
+  .drcard--sm .drcard__head{padding:9px 12px;}
+  .drcard--sm .drcard__body{padding:12px;}
+  .drcard--sm .drcard__title{font-size:14.5px;}
+  .drcard--sm .drcard__fields{margin-top:10px; gap:7px;}
+  .drcard--sm .drcard__k{width:46px;}
+  /* entrance animation (hero): the record assembles, lineage draws in */
+  .drcard.anim{opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s cubic-bezier(.34,1.4,.5,1);}
+  .drcard.anim .drcard__node{opacity:0; transform:translateY(5px); transition:opacity .4s ease, transform .4s ease;}
+  .drcard.anim .drcard__edge{transform:scaleX(0); transform-origin:left; transition:transform .4s ease;}
+  .drcard.anim.is-in{opacity:1; transform:none;}
+  .drcard.anim.is-in .drcard__node{opacity:1; transform:none;}
+  .drcard.anim.is-in .drcard__edge{transform:scaleX(1);}
+  .drcard.anim.is-in .drcard__node:nth-child(1){transition-delay:.12s}
+  .drcard.anim.is-in .drcard__edge:nth-child(2){transition-delay:.26s}
+  .drcard.anim.is-in .drcard__node:nth-child(3){transition-delay:.38s}
+  .drcard.anim.is-in .drcard__edge:nth-child(4){transition-delay:.50s}
+  .drcard.anim.is-in .drcard__node:nth-child(5){transition-delay:.62s}
+  /* workflow focal wrapper around the object */
+  .flow-center{display:grid; gap:14px; justify-items:stretch;}
+  .flow-center__label{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--amber); text-align:center;}
+  .flow-center__foot{font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; color:var(--muted); text-align:center;}
+
+  /* ---------- THE RECORD (hero signature device) ---------- */
+  .record{
+    position:relative; background:var(--paper); color:#2a261d; border-radius:16px;
+    box-shadow:0 40px 90px rgba(0,0,0,.45), 0 2px 0 rgba(255,255,255,.04) inset;
+    border:1px solid var(--line-paper); overflow:hidden;
+  }
+  .record-bar{display:flex; align-items:center; justify-content:space-between; padding:13px 18px; border-bottom:1px solid var(--line-paper); background:var(--paper-2);}
+  .record-bar .label{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted-paper);}
+  .rec-live{font-family:var(--mono); font-size:11px; color:#9a6b16; display:flex; align-items:center; gap:7px; letter-spacing:.04em;}
+  .rec-live .pulse{width:7px;height:7px;border-radius:50%;background:var(--amber); box-shadow:0 0 0 0 rgba(232,177,76,.5); animation:pulse 2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(232,177,76,.45);}70%{box-shadow:0 0 0 7px rgba(232,177,76,0);}100%{box-shadow:0 0 0 0 rgba(232,177,76,0);}}
+  .record-body{padding:20px 20px 22px;}
+  .tline{display:grid; grid-template-columns:64px 1fr; gap:14px; padding:8px 0; font-size:14.5px; line-height:1.5; color:#4a4538;}
+  .tline .who{font-weight:600; color:#2a261d; font-size:13.5px;}
+  .tline .who.dq{color:#9a6b16;}
+  .hl{position:relative; border-radius:5px; padding:1px 4px; margin:0 -2px; background:linear-gradient(var(--amber-soft),var(--amber-soft)); background-size:0% 100%; background-repeat:no-repeat; transition:background-size .7s cubic-bezier(.4,0,.2,1);}
+  .hl.lit{background-size:100% 100%; color:#5a3d08; font-weight:500;}
+
+  .lift{
+    margin-top:14px; background:#fff; border:1px solid var(--line-paper); border-left:3px solid var(--amber);
+    border-radius:12px; padding:14px 15px; box-shadow:0 16px 30px rgba(120,90,30,.12);
+    opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s cubic-bezier(.34,1.4,.5,1);
+  }
+  .lift.in{opacity:1; transform:none;}
+  .lift .tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:#9a6b16; background:var(--amber-soft); padding:3px 8px; border-radius:5px; display:inline-block; margin-bottom:9px;}
+  .lift .dtitle{font-family:var(--serif); font-weight:600; font-size:17px; letter-spacing:-.01em; color:#2a261d; line-height:1.2;}
+  .lift .cite{margin-top:9px; font-family:var(--mono); font-size:11.5px; color:var(--muted-paper); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .lift .cite .src{color:#5a6aa0; background:var(--slate-soft); padding:2px 7px; border-radius:4px;}
+  .lift .dfields{margin-top:11px; display:grid; gap:7px;}
+  .lift .dfield{display:grid; grid-template-columns:64px 1fr; gap:10px; align-items:baseline; font-size:13px;}
+  .lift .dfield .k{font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-paper); padding-top:1px;}
+  .lift .dfield .v{color:#4a4538; line-height:1.4;}
+  .lift .dfield .v b{color:#2a261d; font-weight:600;}
+  .lift .dfield .owner{display:inline-flex; align-items:center; gap:7px;}
+  .lift .dfield .ava{width:18px; height:18px; border-radius:50%; background:var(--amber-soft); color:#9a6b16; display:inline-grid; place-items:center; font-size:10px; font-weight:700; font-family:var(--sans); flex:none;}
+  .rec-section{font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted-paper); margin:0 0 6px;}
+
+  .ask{margin-top:14px; background:var(--ink-2); border:1px solid var(--line); border-radius:12px; padding:14px 15px; opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease;}
+  .ask.in{opacity:1; transform:none;}
+  .ask .q{font-family:var(--mono); font-size:13.5px; color:var(--on-ink); display:flex; align-items:center; gap:9px;}
+  .ask .q .chev{color:var(--amber);}
+  .ask .q .caret{display:inline-block; width:8px; height:16px; background:var(--amber); margin-left:2px; vertical-align:-3px; animation:blink 1s step-end infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  .ask .a{margin-top:11px; padding-top:11px; border-top:1px solid var(--line); font-size:13.5px; color:var(--muted); line-height:1.55; display:none;}
+  .ask .a.show{display:block;}
+  .ask .a .src{font-family:var(--mono); font-size:11px; color:var(--slate); margin-top:8px; display:inline-block;}
+
+  /* ---------- generic section ---------- */
+  section{position:relative;}
+  .band{padding:120px 0;}
+  .band-line{border-top:1px solid var(--line);}
+  .lead-statement{font-family:var(--serif); font-weight:500; font-size:clamp(30px,4.2vw,52px); letter-spacing:-.03em; line-height:1.08; max-width:18ch;}
+  .lead-statement em{font-style:normal; color:var(--amber);}
+  .lead-sub{margin-top:26px; color:var(--muted); font-size:18px; line-height:1.65; max-width:48ch;}
+
+  /* problem visual: fading transcript */
+  .problem-grid{display:grid; grid-template-columns:1.05fr .95fr; gap:64px; align-items:center;}
+  .fade-doc{background:var(--ink-2); border:1px solid var(--line); border-radius:14px; padding:22px; position:relative; overflow:hidden;}
+  .fade-doc .fl{font-size:14px; color:var(--on-ink); padding:7px 0; border-bottom:1px solid var(--line); display:flex; gap:12px;}
+  .fade-doc .fl .t{font-family:var(--mono); font-size:11px; color:var(--muted); flex:none; width:42px; padding-top:2px;}
+  .fade-doc .fl:nth-child(2){opacity:.62;} .fade-doc .fl:nth-child(3){opacity:.4;}
+  .fade-doc .fl:nth-child(4){opacity:.22;} .fade-doc .fl:nth-child(5){opacity:.1; border-bottom:none;}
+  .fade-doc::after{content:"lost to the archive"; position:absolute; right:18px; bottom:14px; font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#54505a;}
+
+  /* ---------- pillars bento ---------- */
+  .pillars{display:grid; grid-template-columns:1.5fr 1fr; grid-template-rows:auto auto; gap:18px;}
+  .tile{background:var(--ink-2); border:1px solid var(--line); border-radius:18px; padding:30px; transition:border-color .25s ease, transform .25s ease; position:relative; overflow:hidden;}
+  .tile:hover{border-color:var(--ink-3); transform:translateY(-3px);}
+  .tile .pnum{font-family:var(--mono); font-size:11px; letter-spacing:.16em; color:var(--muted); text-transform:uppercase;}
+  .tile h3{font-size:25px; margin:16px 0 10px; letter-spacing:-.02em;}
+  .tile p{color:var(--muted); font-size:15.5px; line-height:1.6;}
+  .tile.hero-tile{grid-row:span 2; display:flex; flex-direction:column;}
+  .tile.hero-tile h3{font-size:30px;}
+
+  /* mini memory-search demo inside hero tile */
+  .msearch{margin-top:auto; background:var(--ink); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .msearch .bar{display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:13px; color:var(--on-ink); background:var(--ink-2); border:1px solid var(--line); border-radius:9px; padding:11px 13px;}
+  .msearch .bar svg{flex:none;}
+  .msearch .res{margin-top:12px; display:grid; gap:9px;}
+  .mres{display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:start; padding:11px 12px; background:var(--ink-2); border:1px solid var(--line); border-radius:10px;}
+  .mres .when{font-family:var(--mono); font-size:10.5px; color:var(--slate); white-space:nowrap; padding-top:2px;}
+  .mres .what{font-size:13.5px; color:var(--on-ink); line-height:1.4;}
+  .mres .what span{color:var(--muted); font-size:12.5px;}
+
+  /* ---------- integrations ---------- */
+  .integ{display:grid; grid-template-columns:auto 1fr; gap:48px; align-items:center;}
+  .integ .lbl{font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); max-width:18ch; line-height:1.7;}
+  .integ-row{display:flex; flex-wrap:wrap; gap:14px;}
+  .chip{display:inline-flex; align-items:center; gap:9px; background:var(--ink-2); border:1px solid var(--line); border-radius:10px; padding:11px 16px; font-size:14.5px; font-weight:500; color:var(--on-ink); transition:border-color .2s ease, transform .2s ease;}
+  .chip:hover{border-color:var(--ink-3); transform:translateY(-2px);}
+  .chip .ico{width:9px; height:9px; border-radius:3px; flex:none;}
+  .arrow-note{display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:18px 0;}
+  .arrow-note .ln{height:1px; background:var(--line); flex:1;}
+  .logo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; width:100%;}
+  .logo-tile{display:flex; align-items:center; justify-content:center; gap:12px; background:var(--ink-2); border:1px solid var(--line); border-radius:14px; padding:26px 16px; color:var(--muted); transition:color .2s ease, border-color .2s ease, transform .2s ease;}
+  .logo-tile:hover{color:var(--on-ink); border-color:var(--ink-3); transform:translateY(-2px);}
+  .logo-tile svg{flex:none; width:26px; height:26px;}
+  .logo-tile span{font-size:16px; font-weight:600; letter-spacing:-.01em;}
+  /* workflow diagram */
+  .flow{display:grid; grid-template-columns:0.74fr auto 1.7fr auto 0.74fr; align-items:center; gap:18px; margin-top:38px;}
+  .flow-col .flow-head{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; text-align:center;}
+  .flow-stack{display:grid; gap:10px;}
+  .flow-node{display:flex; align-items:center; gap:11px; background:var(--ink-2); border:1px solid var(--line); border-radius:12px; padding:13px 15px; color:var(--on-ink); transition:border-color .2s ease, transform .2s ease;}
+  .flow-node:hover{border-color:var(--ink-3); transform:translateY(-2px);}
+  .flow-node svg{flex:none; width:20px; height:20px; color:var(--muted);}
+  .flow-node span{font-size:14.5px; font-weight:500;}
+  .flow-arrow{display:grid; place-items:center; color:var(--muted);}
+  .flow-arrow svg{width:30px; height:18px;}
+  .flow-deciq{background:var(--paper); border:1px solid var(--line-paper); border-radius:18px; padding:24px 20px; text-align:center; color:#2a261d; box-shadow:0 26px 60px rgba(0,0,0,.4);}
+  .flow-deciq .mk{width:42px; height:42px; margin:0 auto 12px; display:grid; place-items:center; background:#fff; border:1px solid var(--line-paper); border-radius:13px; box-shadow:0 8px 20px rgba(120,90,30,.12);}
+  .flow-deciq .nm{font-family:var(--serif); font-weight:600; font-size:22px; letter-spacing:-.02em;}
+  .flow-deciq .ds{margin-top:7px; font-size:12.5px; line-height:1.45; color:var(--muted-paper);}
+  .flow-deciq .ds b{color:#2a261d; font-weight:600;}
+
+  /* answer-first hero record */
+  .rec-search{display:flex; align-items:center; gap:11px; padding:16px 18px; border-bottom:1px solid var(--line-paper); background:#fff; font-size:15.5px; color:#2a261d; font-weight:500;}
+  .rec-search svg{flex:none; color:var(--muted-paper);}
+  .rec-search .caret{display:inline-block; width:2px; height:18px; background:var(--amber); margin-left:1px; vertical-align:-3px; animation:blink 1s step-end infinite;}
+  .rec-body{padding:20px;}
+  .answer .related{margin-top:13px; padding-top:12px; border-top:1px solid var(--line-paper); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .answer .rel-k{font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-paper); margin-right:2px;}
+  .rel-chip{font-family:var(--sans); font-size:12px; font-weight:500; color:#5a3d08; background:var(--amber-soft); border:1px solid rgba(232,177,76,.32); border-radius:7px; padding:4px 10px;}
+  .answer .dtitle{font-size:20px;}
+  .answer .tag{background:#2a261d; color:var(--paper);}
+  /* sourced answer: inline citation */
+  .cite-chip{display:inline-flex; align-items:center; gap:4px; font-family:var(--mono); font-size:10.5px; color:#5a6aa0; background:var(--slate-soft); border:1px solid rgba(132,151,201,.26); padding:2px 7px; border-radius:5px; margin-left:7px; white-space:nowrap; vertical-align:1px;}
+  .cite-chip::before{content:"↳"; opacity:.7;}
+  /* decision lineage: the "understands context" signal */
+  .lineage{margin-top:15px; padding-top:14px; border-top:1px solid var(--line-paper);}
+  .ln-k{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-paper); display:block; margin-bottom:11px;}
+  .ln-track{display:flex; align-items:center;}
+  .ln-node{font-family:var(--sans); font-size:11.5px; font-weight:500; color:#4a4538; background:#fff; border:1px solid var(--line-paper); border-radius:7px; padding:5px 10px; white-space:nowrap; opacity:0; transform:translateY(5px); transition:opacity .4s ease, transform .4s ease;}
+  .ln-node.now{color:#5a3d08; background:var(--amber-soft); border-color:rgba(232,177,76,.42); font-weight:600;}
+  .ln-link{height:1.5px; background:var(--line-paper); flex:1 1 14px; max-width:30px; margin:0 2px; transform:scaleX(0); transform-origin:left; transition:transform .4s ease;}
+  .answer.in .ln-node{opacity:1; transform:none;}
+  .answer.in .ln-link{transform:scaleX(1);}
+  .answer.in .ln-node:nth-child(1){transition-delay:.12s}
+  .answer.in .ln-link:nth-child(2){transition-delay:.26s}
+  .answer.in .ln-node:nth-child(3){transition-delay:.38s}
+  .answer.in .ln-link:nth-child(4){transition-delay:.50s}
+  .answer.in .ln-node:nth-child(5){transition-delay:.62s}
+  .ln-foot{margin-top:13px; font-family:var(--mono); font-size:10.5px; letter-spacing:.03em; color:var(--muted-paper);}
+  /* premium hero card */
+  .record{box-shadow:0 50px 110px -20px rgba(0,0,0,.55), 0 8px 24px -12px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.05) inset; border-radius:18px;}
+  .answer{padding:18px 18px 19px; box-shadow:0 20px 40px -16px rgba(120,90,30,.18);}
+
+  /* enlarged workflow: Deciq dominant */
+  .flow-side .flow-head{margin-bottom:11px;}
+  .flow-side .flow-node{padding:10px 13px; background:transparent; border-color:var(--line);}
+  .flow-side .flow-node:hover{transform:none; border-color:var(--ink-3);}
+  .flow-side .flow-node svg{width:17px; height:17px; opacity:.8;}
+  .flow-side .flow-node span{font-size:13.5px; font-weight:450; color:var(--muted);}
+  .flow-deciq.big{padding:34px 30px; border-radius:22px;}
+  .flow-deciq.big .mk{width:54px; height:54px; border-radius:16px; margin-bottom:16px;}
+  .flow-deciq.big .nm{font-size:30px;}
+  .flow-deciq .ds2{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:#9a6b16; margin-top:8px;}
+  .deciq-items{margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:8px; text-align:left;}
+  .ditem{background:#fff; border:1px solid var(--line-paper); border-radius:10px; padding:10px 12px; font-size:13.5px; font-weight:600; color:#2a261d; display:flex; align-items:center; gap:8px;}
+  .ditem::before{content:""; width:6px; height:6px; border-radius:2px; background:var(--amber); flex:none;}
+  .deciq-foot{margin-top:16px; font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; color:var(--muted-paper);}
+  /* Deciq node as an iconic product surface */
+  .flow-deciq.big{padding:0; border-radius:20px; text-align:left; overflow:hidden; box-shadow:0 44px 90px -24px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.5) inset;}
+  .deciq-head{display:flex; align-items:center; gap:11px; padding:17px 22px; border-bottom:1px solid var(--line-paper); background:var(--paper-2);}
+  .deciq-head .mk{width:32px; height:32px; margin:0; border-radius:10px; background:#fff; border:1px solid var(--line-paper); display:grid; place-items:center; box-shadow:0 6px 16px rgba(120,90,30,.1); flex:none;}
+  .deciq-name{font-family:var(--serif); font-weight:600; font-size:21px; letter-spacing:-.02em; color:#2a261d;}
+  .deciq-tag{margin-left:auto; font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:#9a6b16; background:var(--amber-soft); padding:4px 9px; border-radius:6px;}
+  .deciq-list{padding:8px 22px;}
+  .drow{display:flex; align-items:center; gap:13px; padding:13px 0; border-bottom:1px solid var(--line-paper);}
+  .drow:last-child{border-bottom:none;}
+  .drow .dot{width:6px; height:6px; border-radius:2px; background:var(--amber); flex:none;}
+  .drow b{font-size:15px; font-weight:600; color:#2a261d; width:104px; flex:none;}
+  .drow .desc{font-size:13px; color:var(--muted-paper);}
+  .flow-deciq.big .deciq-foot{margin-top:0; padding:14px 22px; border-top:1px solid var(--line-paper); background:var(--paper-2); letter-spacing:.05em;}
+
+  /* time-travel */
+  .tt{display:grid; grid-template-columns:1fr auto 1fr auto 1.25fr; align-items:center; gap:16px; margin-top:42px;}
+  .tt-card{background:var(--ink-2); border:1px solid var(--line); border-radius:18px; padding:26px;}
+  .tt-card .mo{font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-bottom:18px;}
+  .tt-card .role{font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-paper); margin-bottom:8px;}
+  .tt-card .big{font-family:var(--serif); font-size:24px; letter-spacing:-.02em; line-height:1.12; color:var(--on-ink);}
+  .tt-conn{display:grid; place-items:center; gap:9px; min-width:90px;}
+  .tt-conn .lbl{font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); text-align:center; line-height:1.5;}
+  .tt-conn svg{color:var(--muted);}
+  .tt-answer{background:var(--paper); border:1px solid var(--line-paper); border-left:3px solid var(--amber); color:#2a261d; border-radius:18px; padding:26px; box-shadow:0 26px 60px rgba(0,0,0,.36);}
+  .tt-answer .mo{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:#9a6b16; display:flex; align-items:center; gap:8px; margin-bottom:14px;}
+  .tt-answer .mo .pulse{width:7px;height:7px;border-radius:50%;background:var(--amber);}
+  .tt-answer .big{font-family:var(--serif); font-size:22px; letter-spacing:-.02em; line-height:1.16; color:#2a261d;}
+  .tt-answer .sub{margin-top:10px; font-size:14px; line-height:1.5; color:var(--muted-paper);}
+  .tt-answer .sub b{color:#2a261d; font-weight:600;}
+  .tt-answer .src{margin-top:12px; font-family:var(--mono); font-size:11px; color:#5a6aa0; background:var(--slate-soft); padding:3px 8px; border-radius:5px; display:inline-block;}
+
+  /* CTA */
+  .btn-lg{padding:16px 28px; font-size:16px;}
+  .cta-alt{margin-top:18px; font-size:14.5px; color:var(--muted);}
+  .cta-alt a{color:var(--on-ink); border-bottom:1px solid var(--line); padding-bottom:1px; transition:border-color .2s ease;}
+  .cta-alt a:hover{border-color:var(--muted);}
+
+
+  /* ---------- trust ---------- */
+  .trust{background:var(--ink-2); border:1px solid var(--line); border-radius:26px; padding:54px; display:grid; grid-template-columns:1.1fr 1fr; gap:56px; align-items:center;}
+  .trust .lead-statement{font-size:clamp(28px,3.4vw,40px);}
+  .trust-list{display:grid; gap:2px;}
+  .tcheck{display:grid; grid-template-columns:auto 1fr; gap:15px; align-items:start; padding:16px 0; border-bottom:1px solid var(--line);}
+  .tcheck:last-child{border-bottom:none;}
+  .tcheck .tk{width:24px; height:24px; border-radius:7px; background:var(--amber-soft); color:var(--amber); display:grid; place-items:center; flex:none; margin-top:1px;}
+  .tcheck b{font-weight:600; font-size:15.5px; display:block; margin-bottom:3px;}
+  .tcheck span{color:var(--muted); font-size:14px; line-height:1.5;}
+
+  /* ---------- proof ---------- */
+  .proof-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:18px;}
+  .quote{background:var(--ink-2); border:1px solid var(--line); border-radius:18px; padding:30px;}
+  .quote q{font-family:var(--serif); font-size:22px; line-height:1.32; letter-spacing:-.01em; color:var(--on-ink); quotes:none; display:block;}
+  .quote q::before,.quote q::after{content:"";}
+  .quote .by{margin-top:20px; font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:.03em;}
+  .quote .by b{color:var(--on-ink); font-weight:500;}
+  .metrics{display:flex; gap:46px; flex-wrap:wrap; margin-top:14px;}
+  .metric .n{font-family:var(--serif); font-size:46px; font-weight:500; letter-spacing:-.03em; color:var(--amber); line-height:1;}
+  .metric .k{font-family:var(--mono); font-size:12px; letter-spacing:.05em; color:var(--muted); margin-top:8px; max-width:22ch; line-height:1.5;}
+
+  /* ---------- final CTA ---------- */
+  .final{background:linear-gradient(180deg, var(--ink-2), #191c25); border:1px solid var(--line); border-radius:26px; padding:64px 48px; text-align:center; position:relative; overflow:hidden;}
+  .final h2{max-width:18ch; margin:0 auto; position:relative;}
+  .final p{color:var(--muted); font-size:18px; margin:22px auto 0; max-width:44ch; position:relative;}
+  .final .cta-row{margin:34px auto 0; justify-content:center;}
+  .final .reassure{justify-content:center; margin-left:auto; margin-right:auto;}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line); padding:34px 0 56px; margin-top:96px;}
+  .foot-inner{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;}
+  .foot-inner .meta{font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:.03em;}
+  .foot-links{display:flex; gap:24px; font-size:14px; color:var(--muted);}
+  .foot-links a:hover{color:var(--on-ink);}
+  .foot-brand{display:flex; flex-direction:column; gap:8px;}
+  .foot-tag{font-family:var(--mono); font-size:11px; letter-spacing:.06em; color:var(--muted);}
+
+  /* reveal on scroll */
+  .reveal{opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.3,1);}
+  .reveal.in{opacity:1; transform:none;}
+
+  /* focus visibility */
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--amber); outline-offset:3px; border-radius:6px;}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:980px){
+    .hero{padding:54px 0 72px;}
+    .hero-grid{grid-template-columns:1fr; gap:44px;}
+    .hero h1{max-width:none;}
+    .navlinks a:not(.nav-cta){display:none;}
+    .problem-grid{grid-template-columns:1fr; gap:38px;}
+    .pillars{grid-template-columns:1fr;}
+    .tile.hero-tile{grid-row:auto;}
+    .trust{grid-template-columns:1fr; gap:34px; padding:36px;}
+    .integ{grid-template-columns:1fr; gap:24px;}
+    .flow{grid-template-columns:1fr; gap:14px; max-width:440px; margin-left:auto; margin-right:auto;}
+    .flow-arrow svg{transform:rotate(90deg);}
+    .tt{grid-template-columns:1fr; gap:14px; max-width:460px; margin-left:auto; margin-right:auto;}
+    .tt-conn{min-width:0;}
+    .tt-conn svg{transform:rotate(90deg);}
+    .deciq-items{grid-template-columns:1fr 1fr;}
+    .proof-grid{grid-template-columns:1fr;}
+    .band{padding:84px 0;}
+  }
+  @media (max-width:560px){
+    body{font-size:16px;}
+    .wrap{width:calc(100% - 36px);}
+    .final{padding:44px 24px;}
+    .trust{padding:28px;}
+    .record-body{padding:16px;}
+    .rec-body{padding:16px;}
+    .metrics{gap:30px;}
+    .dr-frame__body{padding:14px;}
+    .drcard__track{flex-wrap:wrap; gap:7px;}
+    .drcard__edge{display:none;}
+    .logo-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;}
+    .reveal{opacity:1; transform:none; transition:none;}
+    html{scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <rect x="1" y="1" width="24" height="24" rx="7" fill="#1C1F28" stroke="#2A2E3A"/>
+          <path d="M7 8.5h6.5a4.5 4.5 0 0 1 0 9H7v-9Z" stroke="#E8B14C" stroke-width="1.8" stroke-linejoin="round"/>
+          <circle cx="17.5" cy="8.5" r="1.7" fill="#E8B14C"/>
+        </svg>
+      </span>
+      Deciq
+    </a>
+    <div class="navlinks">
+      <a href="#product">Product</a>
+      <a href="#memory">Memory</a>
+      <a href="#security">Security</a>
+      <a class="nav-cta" href="https://demo.deciq.app" target="_blank" rel="noopener noreferrer">Try Demo →</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <!-- ===================== HERO ===================== -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="kicker">Decision Memory</span>
+        <h1>Months later, someone asks <em style="font-style:normal; color:var(--amber);">why.</em> Deciq remembers.</h1>
+        <p class="hero-sub">Deciq captures every decision your team makes — <b>the reasoning, the owner, the moment it happened</b> — then answers when you ask why it was decided, who owns it, or when it came up.</p>
+
+        <div class="capture">
+          <a class="btn-primary" href="https://demo.deciq.app" target="_blank" rel="noopener noreferrer">Try Demo →</a>
+        </div>
+        <div class="reassure">
+          <span>Works with Zoom, Meet &amp; Teams</span><span class="dot"></span>
+          <span>Built for product, engineering &amp; leadership teams</span>
+        </div>
+      </div>
+
+      <!-- SIGNATURE DEVICE: the record -->
+      <div class="dr-frame dr-frame--lg reveal" id="record">
+        <div class="dr-frame__search">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="#9a6b16" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="#9a6b16" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span id="ask-text"></span><span class="caret" id="caret"></span>
+        </div>
+        <div class="dr-frame__body">
+          <article class="drcard drcard--lg anim" id="answer">
+            <div class="drcard__head">
+              <span class="drcard__glyph"><svg width="13" height="13" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M7 6.5h6.5a6.5 6.5 0 0 1 0 13H7v-13Z" stroke="#E8B14C" stroke-width="2.4" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="1.9" fill="#E8B14C"/></svg></span>
+              <span class="drcard__kind">Decision Record</span>
+              <span class="drcard__meta"><span class="drcard__live"></span> answered</span>
+            </div>
+            <div class="drcard__body">
+              <h3 class="drcard__title">Launch moved to August 15</h3>
+              <div class="drcard__fields">
+                <div class="drcard__row"><span class="drcard__k">Reason</span><span class="drcard__v"><b>Authentication reliability risk</b><span class="drcard__cite">Roadmap Sync · Apr 2</span></span></div>
+                <div class="drcard__row"><span class="drcard__k">Owner</span><span class="drcard__v drcard__owner"><span class="drcard__ava">A</span><b>Alex</b></span></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PROBLEM ===================== -->
+  <section class="band band-line" id="product">
+    <div class="wrap problem-grid">
+      <div class="reveal">
+        <span class="kicker">The problem</span>
+        <p class="lead-statement" style="margin-top:22px;">Decisions don't get lost in the meeting. They get lost <em>after</em> it.</p>
+        <p class="lead-sub">Notes pile up. Recordings go unwatched. The reasoning behind a call lives in someone's memory until they leave — and then the team relitigates a question it already answered. Deciq exists for the part everyone forgets: <b style="color:var(--on-ink); font-weight:500;">why.</b></p>
+      </div>
+      <div class="fade-doc reveal" aria-hidden="true">
+        <div class="fl"><span class="t">14:32</span><span>Decision: move launch to August 15 — auth risk</span></div>
+        <div class="fl"><span class="t">Mar 4</span><span>Decision: defer the billing rewrite to Q3</span></div>
+        <div class="fl"><span class="t">Feb 19</span><span>Decision: standardize on Postgres over Mongo</span></div>
+        <div class="fl"><span class="t">Jan 30</span><span>Decision: hold the enterprise tier until SSO ships</span></div>
+        <div class="fl"><span class="t">Jan 11</span><span>Decision: …</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PILLARS / MEMORY ===================== -->
+  <section class="band" id="memory">
+    <div class="wrap">
+      <div class="reveal" style="max-width:640px; margin-bottom:42px;">
+        <span class="kicker">What Deciq does</span>
+        <h2 style="margin-top:22px;">More than notes. A Decision Memory your team can question.</h2>
+      </div>
+      <div class="pillars">
+        <article class="tile hero-tile reveal">
+          <span class="pnum">01 — the difference</span>
+          <h3>Ask anything. Get the source.</h3>
+          <p>Search across every meeting in plain language. Deciq answers with the decision, who made it, and the moment it was said — not ten transcripts to scrub through.</p>
+          <div class="dr-frame dr-frame--sm" style="margin-top:auto;">
+            <div class="dr-frame__search">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="#9a6b16" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="#9a6b16" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Who owns the billing rewrite?
+            </div>
+            <div class="dr-frame__body">
+              <article class="drcard drcard--sm">
+                <div class="drcard__head">
+                  <span class="drcard__glyph"><svg width="13" height="13" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M7 6.5h6.5a6.5 6.5 0 0 1 0 13H7v-13Z" stroke="#E8B14C" stroke-width="2.4" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="1.9" fill="#E8B14C"/></svg></span>
+                  <span class="drcard__kind">Decision Record</span>
+                  <span class="drcard__meta"><span class="drcard__live"></span> answered</span>
+                </div>
+                <div class="drcard__body">
+                  <h4 class="drcard__title">Billing rewrite deferred to Q3</h4>
+                  <div class="drcard__fields">
+                    <div class="drcard__row"><span class="drcard__k">Owner</span><span class="drcard__v drcard__owner"><span class="drcard__ava">M</span><b>Maya</b></span></div>
+                    <div class="drcard__row"><span class="drcard__k">Why</span><span class="drcard__v">Capacity — auth work takes priority.</span></div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </article>
+
+        <article class="tile reveal">
+          <span class="pnum">02 — capture</span>
+          <h3>Decisions, not dictation.</h3>
+          <p>Deciq identifies the decisions, tradeoffs, risks, owners, and open questions in a conversation — and writes them down with their reasoning attached.</p>
+        </article>
+
+        <article class="tile reveal">
+          <span class="pnum">03 — act</span>
+          <h3>Acts where you work.</h3>
+          <p>Push follow-ups to Slack, open tasks in Jira or Linear, and turn what was decided into work that actually happens — automatically.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== WORKFLOW ===================== -->
+  <section class="band band-line" id="workflow">
+    <div class="wrap reveal">
+      <div style="max-width:680px;">
+        <span class="kicker">Where it fits</span>
+        <h2 style="margin-top:22px;">Every meeting becomes searchable Decision Memory.</h2>
+        <p class="lead-sub" style="margin-top:20px; max-width:52ch;">Deciq turns each meeting into a <b style="color:var(--on-ink); font-weight:500;">Decision Record</b>. Together, those records become your team's <b style="color:var(--on-ink); font-weight:500;">Decision Memory</b> — searchable for good.</p>
+      </div>
+      <div class="flow">
+        <div class="flow-col flow-side">
+          <div class="flow-head">Meetings</div>
+          <div class="flow-stack">
+            <span class="flow-node"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2.5" y="6.5" width="11.5" height="11" rx="3"/><path d="M15.5 10.4 20.4 7.2c.66-.43 1.6 0 1.6.86v7.88c0 .86-.94 1.29-1.6.86L15.5 13.6z"/></svg><span>Zoom</span></span>
+            <span class="flow-node"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H12a2.5 2.5 0 0 1 2.5 2.5V11l4.6-3.1c.66-.45 1.6.02 1.6.86v6.48c0 .84-.94 1.31-1.6.86L14.5 13v2.5A2.5 2.5 0 0 1 12 18H5.5A2.5 2.5 0 0 1 3 15.5z" fill="currentColor"/></svg><span>Google Meet</span></span>
+            <span class="flow-node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3.5"/><path d="M8 9.5h8M12 9.5v6" stroke-linecap="round"/></svg><span>Teams</span></span>
+          </div>
+        </div>
+
+        <div class="flow-arrow"><svg viewBox="0 0 30 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 9h23M19 4l6 5-6 5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+        <div class="flow-center">
+          <div class="flow-center__label">Deciq</div>
+          <article class="drcard">
+            <div class="drcard__head">
+              <span class="drcard__glyph"><svg width="13" height="13" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M7 6.5h6.5a6.5 6.5 0 0 1 0 13H7v-13Z" stroke="#E8B14C" stroke-width="2.4" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="1.9" fill="#E8B14C"/></svg></span>
+              <span class="drcard__kind">Decision Record</span>
+              <span class="drcard__meta">Apr 2</span>
+            </div>
+            <div class="drcard__body">
+              <h3 class="drcard__title">Launch moved to August 15</h3>
+              <div class="drcard__fields">
+                <div class="drcard__row"><span class="drcard__k">Reason</span><span class="drcard__v"><b>Authentication reliability risk</b></span></div>
+                <div class="drcard__row"><span class="drcard__k">Owner</span><span class="drcard__v drcard__owner"><span class="drcard__ava">A</span><b>Alex</b></span></div>
+              </div>
+              <div class="drcard__lineage">
+                <span class="drcard__lnk">Decision lineage</span>
+                <div class="drcard__track">
+                  <span class="drcard__node">Auth rebuild</span>
+                  <span class="drcard__edge"></span>
+                  <span class="drcard__node">Launch readiness</span>
+                  <span class="drcard__edge"></span>
+                  <span class="drcard__node is-now">This decision</span>
+                </div>
+              </div>
+            </div>
+          </article>
+          <div class="flow-center__foot">Syncs to Slack · Jira · Linear · Notion</div>
+        </div>
+
+        <div class="flow-arrow"><svg viewBox="0 0 30 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 9h23M19 4l6 5-6 5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+
+        <div class="flow-col flow-side">
+          <div class="flow-head">Decision Memory</div>
+          <div class="flow-stack">
+            <span class="flow-node"><span>Searchable record</span></span>
+            <span class="flow-node"><span>Linked decisions</span></span>
+            <span class="flow-node"><span>Instant answers</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TIME TRAVEL ===================== -->
+  <section class="band" id="payoff">
+    <div class="wrap reveal">
+      <div style="max-width:660px;">
+        <span class="kicker">Three months later</span>
+        <h2 style="margin-top:22px;">The decision fades. The reasoning doesn't.</h2>
+      </div>
+      <div class="tt">
+        <div class="tt-card">
+          <div class="mo">April</div>
+          <div class="role">Decision</div>
+          <div class="big">Launch moved to August 15.</div>
+        </div>
+
+        <div class="tt-conn">
+          <svg width="30" height="18" viewBox="0 0 30 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 9h23M19 4l6 5-6 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="lbl">three<br>months<br>pass</span>
+        </div>
+
+        <div class="tt-card">
+          <div class="mo">July</div>
+          <div class="role">Someone asks</div>
+          <div class="big">"Why did we delay the launch?"</div>
+        </div>
+
+        <div class="tt-conn">
+          <svg width="30" height="18" viewBox="0 0 30 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 9h23M19 4l6 5-6 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="lbl">ask<br>Deciq</span>
+        </div>
+
+        <article class="drcard">
+          <div class="drcard__head">
+            <span class="drcard__glyph"><svg width="13" height="13" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M7 6.5h6.5a6.5 6.5 0 0 1 0 13H7v-13Z" stroke="#E8B14C" stroke-width="2.4" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="1.9" fill="#E8B14C"/></svg></span>
+            <span class="drcard__kind">Decision Record</span>
+            <span class="drcard__meta"><span class="drcard__live"></span> answered in seconds</span>
+          </div>
+          <div class="drcard__body">
+            <h3 class="drcard__title">Launch moved to August 15</h3>
+            <div class="drcard__fields">
+              <div class="drcard__row"><span class="drcard__k">Reason</span><span class="drcard__v"><b>Authentication reliability risk</b><span class="drcard__cite">Roadmap Sync · Apr 2</span></span></div>
+              <div class="drcard__row"><span class="drcard__k">Owner</span><span class="drcard__v drcard__owner"><span class="drcard__ava">A</span><b>Alex</b></span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PROOF ===================== -->
+  <section class="band band-line">
+    <div class="wrap">
+      <span class="kicker reveal">From our design partners</span>
+      <div class="proof-grid reveal" style="margin-top:28px;">
+        <div class="quote">
+          <q>We stopped relitigating settled calls in standup. The reasoning is right there, with the receipt.</q>
+          <div class="by"><b>Design partner</b> · 01</div>
+        </div>
+        <div class="quote">
+          <q>New engineers used to ask "wait, why is it built this way?" Now they just search Deciq.</q>
+          <div class="by"><b>Design partner</b> · 02</div>
+        </div>
+      </div>
+      <div class="metrics reveal" style="margin-top:38px;">
+        <div class="metric"><div class="n">Decision</div><div class="k">every choice on the record, not just notes</div></div>
+        <div class="metric"><div class="n">Reasoning</div><div class="k">the why, preserved with its context</div></div>
+        <div class="metric"><div class="n">Ownership</div><div class="k">who decided, and who's accountable</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECURITY ===================== -->
+  <section class="band" id="security">
+    <div class="wrap">
+      <div class="trust reveal">
+        <div>
+          <span class="kicker">Memory, governed</span>
+          <p class="lead-statement" style="margin-top:22px;">You decide what's remembered.</p>
+          <p class="lead-sub" style="max-width:36ch;">Deciq holds your team's reasoning, so it treats memory as something you own and control — who sees it, how long it lives, and when it's gone. Encrypted throughout; SOC 2 on the roadmap.</p>
+        </div>
+        <div class="trust-list">
+          <div class="tcheck"><span class="tk">✓</span><div><b>Access</b><span>You control who can see each decision and query the memory.</span></div></div>
+          <div class="tcheck"><span class="tk">✓</span><div><b>Retention</b><span>Set how long memory is kept — per workspace, on your schedule.</span></div></div>
+          <div class="tcheck"><span class="tk">✓</span><div><b>Deletion</b><span>Remove any decision or meeting from memory, permanently.</span></div></div>
+          <div class="tcheck"><span class="tk">✓</span><div><b>Governance</b><span>Encrypted in transit and at rest, and never used to train models.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FINAL CTA ===================== -->
+  <section class="band" id="access">
+    <div class="wrap">
+      <div class="final reveal">
+        <h2>Stop relitigating settled decisions.</h2>
+        <p>See how your team's decisions become a searchable Decision Memory — try the live demo, no setup.</p>
+        <div class="cta-row" style="justify-content:center;">
+          <a class="btn-primary btn-lg" href="https://demo.deciq.app" target="_blank" rel="noopener noreferrer">Try Demo →</a>
+        </div>
+        <p class="cta-alt">Not ready? <a href="mailto:hello@deciq.app?subject=Early%20Access%20Request">Request early access →</a></p>
+        <div class="reassure"><span>No setup</span><span class="dot"></span><span>No card required</span><span class="dot"></span><span>Your conversations stay yours</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="foot-brand">
+      <a class="brand" href="#top" style="font-size:18px;">
+        <span class="mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="7" fill="#1C1F28" stroke="#2A2E3A"/><path d="M7 8.5h6.5a4.5 4.5 0 0 1 0 9H7v-9Z" stroke="#E8B14C" stroke-width="1.8" stroke-linejoin="round"/><circle cx="17.5" cy="8.5" r="1.7" fill="#E8B14C"/></svg>
+        </span>
+        Deciq
+      </a>
+      <span class="foot-tag">Decision Memory for Teams</span>
+    </div>
+    <div class="foot-links">
+      <a href="#product">Product</a><a href="#security">Security</a><a href="https://demo.deciq.app" target="_blank" rel="noopener noreferrer">Try Demo</a>
+    </div>
+    <span class="meta">© 2026 Hive Blockchain LLC<br>deciq.app</span>
+  </div>
+</footer>
+
+<script>
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* nav border on scroll */
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 12);
+  onScroll(); window.addEventListener('scroll', onScroll, {passive:true});
+
+  /* scroll reveals */
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  }, {threshold:.16});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  /* ---------- orchestrated hero sequence: question -> answer ---------- */
+  const askText = document.getElementById('ask-text');
+  const caret = document.getElementById('caret');
+  const answer = document.getElementById('answer');
+  const question = 'Why did we delay the launch?';
+
+  function staticEndState(){
+    askText.textContent = question;
+    if(caret) caret.style.display = 'none';
+    answer.classList.add('is-in');
+  }
+
+  function runSequence(){
+    if(reduce){ staticEndState(); return; }
+    const t = [];
+    t.push(setTimeout(()=>{
+      let i = 0;
+      const type = () => {
+        if(i <= question.length){
+          askText.textContent = question.slice(0,i);
+          i++; t.push(setTimeout(type, 45));
+        } else {
+          if(caret) caret.style.display = 'none';
+          t.push(setTimeout(()=>answer.classList.add('is-in'), 320));
+        }
+      };
+      type();
+    }, 600));
+  }
+
+  /* start once the record scrolls into view */
+  const rec = document.getElementById('record');
+  let started = false;
+  const recIO = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting && !started){ started = true; runSequence(); recIO.disconnect(); }
+    });
+  }, {threshold:.4});
+  recIO.observe(rec);
+</script>
+</body>
+</html>
